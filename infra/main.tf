@@ -16,7 +16,7 @@ resource "google_storage_bucket" "benchmark" {
 
   lifecycle_rule {
     condition { age = 90 }
-    action    { type = "Delete" }
+    action { type = "Delete" }
   }
 }
 

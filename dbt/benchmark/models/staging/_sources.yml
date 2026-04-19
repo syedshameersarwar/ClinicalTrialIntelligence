@@ -18,17 +18,18 @@ sources:
             description: "Keyword-classified therapeutic area from MeSH conditions."
             tests:
               - accepted_values:
-                  values:
-                    - Oncology
-                    - Cardiovascular
-                    - Neurology
-                    - Respiratory
-                    - Endocrine/Metabolic
-                    - Infectious Disease
-                    - Immunology/Rheumatology
-                    - Psychiatry
-                    - Gastroenterology
-                    - Other
+                  arguments:
+                    values:
+                      - Oncology
+                      - Cardiovascular
+                      - Neurology
+                      - Respiratory
+                      - Endocrine/Metabolic
+                      - Infectious Disease
+                      - Immunology/Rheumatology
+                      - Psychiatry
+                      - Gastroenterology
+                      - Other
 
   - name: streaming
     database: "{{ env_var('GCP_PROJECT_ID') }}"

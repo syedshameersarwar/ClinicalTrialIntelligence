@@ -100,7 +100,7 @@ Both pipelines are orchestrated by Kestra and visualized in a two-tile Looker St
 ║                                                                              ║
 ║  Docker Compose  Redpanda │ Flink (JM+TM) │ PostgreSQL │ Kestra              ║
 ║                                                                              ║
-║  GitHub Actions  terraform validate │ dbt compile (CI on every push)         ║
+║  GitHub Actions  terraform fmt/validate │ dbt parse (CI on every push)       ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
 BigQuery Data Model:
@@ -139,7 +139,7 @@ BigQuery Data Model:
 | Transformations | **dbt** (dbt-bigquery) | 4 models: 2 staging views + 2 mart tables |
 | Orchestration | **Kestra** | Monthly batch flow + daily streaming flow; runs inside Docker |
 | Dashboard | **Looker Studio** | 2-tile report: batch mart + streaming mart |
-| CI/CD | **GitHub Actions** | terraform validate + dbt compile on every push |
+| CI/CD | **GitHub Actions** | `terraform fmt -check` + validate; `dbt parse` (no GCP creds) on every push |
 | Package manager | **uv** | Python environment management (local dev/backfill) |
 
 ---
@@ -469,6 +469,10 @@ After completing the Quick Start, confirm all components are working:
 
 ## Looker Studio Dashboard Setup
 
+**Live dashboard:** [BenchMark — Looker Studio (view)](https://datastudio.google.com/s/kxcK7Cl4t2Q)
+
+Use that link to open the published report as a viewer. The instructions below walk through recreating the same layout and charts in your own Looker Studio workspace (connected to your BigQuery project) if you want to customize or rebuild it from scratch.
+
 ### Prerequisites
 
 Both pipelines must have run at least once:
@@ -697,7 +701,7 @@ Arrange the report canvas:
 **Share the dashboard:**
 1. Click **Share** → **Manage access**
 2. Set to **Anyone with the link can view**
-3. Copy the link and add it to your README `## Dashboard` section
+3. Copy the link and document it in your README (for example next to **Live dashboard** under [Looker Studio Dashboard Setup](#looker-studio-dashboard-setup))
 
 ### Dashboard Reference
 
@@ -717,17 +721,18 @@ GitHub Actions runs on every push to `main` and every pull request:
 Jobs:
   terraform-validate:
     - terraform init -backend=false
+    - terraform fmt -check
     - terraform validate
-    (confirms provider configuration and HCL syntax)
+    (confirms formatting, provider configuration, and HCL syntax)
 
-  dbt-compile:
+  dbt-parse:
     - pip install dbt-bigquery
-    - write stub profiles.yml (method: oauth, project: ci-placeholder)
-    - dbt deps && dbt compile
-    (confirms all 4 SQL models parse correctly without connecting to BigQuery)
+    - write stub profiles.yml (placeholder project; not used for auth during parse)
+    - dbt deps && dbt parse
+    (loads the full project graph and manifest without querying BigQuery)
 ```
 
-The stub `profiles.yml` in CI uses `method: oauth` which skips credential validation — `dbt compile` only checks SQL syntax.
+`dbt compile` talks to the warehouse for some adapters; `dbt parse` only parses project files and is the right check for a credential-free runner. `GCP_PROJECT_ID` is set so `{{ env_var('GCP_PROJECT_ID') }}` in sources resolves during parsing.
 
 ---
 

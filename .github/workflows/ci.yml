@@ -26,9 +26,11 @@ jobs:
       - name: Terraform Validate
         run: terraform -chdir=infra validate
 
-  dbt-compile:
-    name: dbt Compile
+  dbt-parse:
+    name: dbt Parse
     runs-on: ubuntu-latest
+    env:
+      GCP_PROJECT_ID: ci-placeholder-project
     steps:
       - uses: actions/checkout@v4
 
@@ -39,7 +41,7 @@ jobs:
       - name: Install dbt
         run: pip install dbt-bigquery==1.8.0
 
-      - name: Write mock profiles.yml
+      - name: Write CI profiles.yml
         run: |
           cat > dbt/benchmark/profiles.yml << 'EOF'
           benchmark:
@@ -54,9 +56,7 @@ jobs:
           EOF
 
       - name: dbt deps
-        run: cd dbt/benchmark && dbt deps
+        run: cd dbt/benchmark && dbt deps --profiles-dir .
 
-      - name: dbt compile
-        run: cd dbt/benchmark && dbt compile --profiles-dir . --target ci
-        env:
-          GCP_PROJECT_ID: ci-placeholder-project
+      - name: dbt parse
+        run: cd dbt/benchmark && dbt parse --profiles-dir . --target ci
