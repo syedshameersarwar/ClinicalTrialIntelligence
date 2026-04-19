@@ -4,6 +4,16 @@ A production-grade data engineering capstone that ingests, processes, and visual
 
 ---
 
+## Dashboard
+
+**Live Looker Studio report (end result):** [BenchMark — view in browser](https://datastudio.google.com/s/kxcK7Cl4t2Q)
+
+Open that link first to see the two-tile dashboard (trial landscape + daily activity) produced by this project. You do not need to run the pipeline to review the visualization.
+
+To build the same report against your own BigQuery data later, follow **[Looker Studio dashboard setup](#looker-studio-dashboard-setup)** at the end of this README after you have completed the pipeline steps.
+
+---
+
 ## Problem Statement
 
 ClinicalTrials.gov maintains over 375,000 registered clinical trials. Research teams, biotech investors, and healthcare regulators need two kinds of insight that existing public tools don't provide together:
@@ -17,7 +27,7 @@ BenchMark answers both questions by combining:
 - A **monthly batch pipeline** that processes the full AACT snapshot (~375K trials) through Apache Spark into BigQuery, then transforms it with dbt into a partitioned, clustered mart for categorical analysis.
 - A **daily streaming pipeline** that fetches real CT.gov API updates, routes them through Redpanda (Kafka) and PyFlink, and appends aggregated daily counts to BigQuery — building a time-series mart for temporal trend analysis.
 
-Both pipelines are orchestrated by Kestra and visualized in a two-tile Looker Studio dashboard.
+Both pipelines are orchestrated by Kestra and feed a two-tile Looker Studio dashboard — see the **[Dashboard](#dashboard)** section at the top for the live report link.
 
 ---
 
@@ -469,9 +479,7 @@ After completing the Quick Start, confirm all components are working:
 
 ## Looker Studio Dashboard Setup
 
-**Live dashboard:** [BenchMark — Looker Studio (view)](https://datastudio.google.com/s/kxcK7Cl4t2Q)
-
-Use that link to open the published report as a viewer. The instructions below walk through recreating the same layout and charts in your own Looker Studio workspace (connected to your BigQuery project) if you want to customize or rebuild it from scratch.
+The published report is linked under **[Dashboard](#dashboard)** at the top of this README. The steps below are for **recreating** that layout in your own Looker Studio workspace, connected to **your** BigQuery project, once the pipelines have populated the marts.
 
 ### Prerequisites
 
@@ -698,10 +706,7 @@ Arrange the report canvas:
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-**Share the dashboard:**
-1. Click **Share** → **Manage access**
-2. Set to **Anyone with the link can view**
-3. Copy the link and document it in your README (for example next to **Live dashboard** under [Looker Studio Dashboard Setup](#looker-studio-dashboard-setup))
+When you publish your own copy, use **Share → Manage access → Anyone with the link can view**, then put that URL in the **[Dashboard](#dashboard)** section at the top of the README so reviewers see your end result first.
 
 ### Dashboard Reference
 
