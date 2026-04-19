@@ -1,0 +1,19 @@
+# Large data and generated files — not needed in pipeline image
+data/aact/
+credentials/
+dbt/benchmark/target/
+dbt/benchmark/dbt_packages/
+dbt/benchmark/logs/
+streaming/jobs/
+streaming/docker-compose.yml
+streaming/Dockerfile.flink
+streaming/flink-config.yaml
+streaming/init.sql
+streaming/pyproject.flink.toml
+infra/
+dashboard/
+kestra/
+.git/
+.venv/
+__pycache__/
+*.pyc

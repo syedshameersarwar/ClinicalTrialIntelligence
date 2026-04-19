@@ -1,0 +1,23 @@
+[project]
+name = "benchmark-clinical-trials"
+version = "0.1.0"
+description = "Clinical Trial Research Intelligence Platform — DE Zoomcamp Capstone"
+requires-python = ">=3.12"
+dependencies = [
+    # Batch pipeline
+    # Pinned to 3.5.x: the BigQuery connector spark-bigquery-with-dependencies_2.12
+    # is compiled against Scala 2.12. PySpark 4.x switched to Scala 2.13, causing
+    # ClassNotFoundException: scala.Serializable at connector load time.
+    "pyspark>=3.5,<4",
+    # Streaming producer
+    "kafka-python>=2.0",
+    "requests>=2.31",
+    # PostgreSQL → BigQuery sync
+    "pandas>=2.0",
+    "google-cloud-bigquery>=3.0",
+    "psycopg2-binary>=2.9",
+    "pyarrow>=14.0",
+    "db-dtypes>=1.2",
+    # dbt
+    "dbt-bigquery>=1.7",
+]

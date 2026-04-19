@@ -1,0 +1,71 @@
+id: daily_streaming
+namespace: benchmark
+
+description: |
+  Daily streaming pipeline: fetch CT.gov trial updates for yesterday → Kafka → PyFlink →
+  PostgreSQL → BigQuery streaming.daily_activity → dbt streaming marts.
+  Runs every day at 06:00 UTC. Use Kestra backfill to populate historical data.
+
+triggers:
+  - id: daily_schedule
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "0 6 * * *"   # every day at 06:00 UTC
+
+variables:
+  # trigger.date is set by the scheduler (including backfill). Falls back to now() for manual runs.
+  yesterday:  "{{trigger.date | default(now()) | dateAdd(-1, 'DAYS') | date('yyyy-MM-dd')}}"
+  bq_project: "{{envs.gcp_project_id}}"
+
+tasks:
+  - id: fetch_and_produce
+    type: io.kestra.plugin.docker.Run
+    description: "Fetch CT.gov API for yesterday, produce events to Redpanda"
+    containerImage: benchmark-pipeline:latest
+    pullPolicy: NEVER
+    networkMode: benchmark_default
+    commands:
+      - python
+      - /app/streaming/producers/producer.py
+      - --date
+      - "{{render(vars.yesterday)}}"
+      - --bootstrap-servers
+      - redpanda:29092
+
+  - id: flink_pulse
+    type: io.kestra.plugin.scripts.shell.Commands
+    description: "PyFlink: 1-day tumbling window → PostgreSQL daily_activity"
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    commands:
+      - docker exec benchmark-jobmanager-1 flink run -py /opt/jobs/registration_pulse_job.py
+
+  - id: sync_to_bq
+    type: io.kestra.plugin.scripts.shell.Commands
+    description: "Sync PostgreSQL daily_activity → BigQuery streaming.daily_activity (APPEND)"
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    commands:
+      - |
+        docker run --rm \
+          --network benchmark_default \
+          -v /tmp/benchmark_sa_key.json:/tmp/sa_key.json:ro \
+          -e GCP_PROJECT_ID={{render(vars.bq_project)}} \
+          -e GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa_key.json \
+          -e PG_HOST=postgres \
+          -e PG_PORT=5432 \
+          benchmark-pipeline:latest \
+          python /app/streaming/sync/pg_to_bq.py
+
+  - id: dbt_streaming_run
+    type: io.kestra.plugin.scripts.shell.Commands
+    description: "dbt: refresh streaming-sourced staging + mart models"
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    commands:
+      - |
+        docker run --rm \
+          -v /tmp/benchmark_sa_key.json:/tmp/sa_key.json:ro \
+          -e GCP_PROJECT_ID={{render(vars.bq_project)}} \
+          -e GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa_key.json \
+          benchmark-pipeline:latest \
+          /bin/sh -c "cd /app/dbt/benchmark && dbt deps && dbt run --select stg_daily_activity mart_activity_trends --profiles-dir . --target prod"

@@ -1,0 +1,59 @@
+id: monthly_batch
+namespace: benchmark
+
+description: |
+  Monthly batch pipeline: download AACT → Spark enrich + load → BigQuery raw.trials → dbt batch models.
+  Scheduled for the 1st of every month. Use Kestra backfill to trigger for a specific month.
+
+triggers:
+  - id: monthly_schedule
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "0 2 1 * *"   # 1st of every month at 02:00 UTC
+
+variables:
+  bq_project:    "{{envs.gcp_project_id}}"
+  # trigger.date is set by the scheduler. Falls back to now() for manual runs.
+  trigger_date:  "{{trigger.date | default(now()) | date('yyyy-MM-dd')}}"
+
+tasks:
+  - id: download_and_spark
+    type: io.kestra.plugin.scripts.shell.Commands
+    description: "Download AACT export then run Spark job — combined to share the local data dir"
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    commands:
+      - |
+        docker run --rm \
+          -v /tmp/benchmark_sa_key.json:/tmp/sa_key.json:ro \
+          -e GCP_PROJECT_ID={{render(vars.bq_project)}} \
+          -e GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa_key.json \
+          benchmark-pipeline:latest \
+          /bin/sh -c "bash /app/data/download_aact.sh {{render(vars.trigger_date)}} && python /app/spark/enrich_and_load.py /app/data/aact {{render(vars.bq_project)}}"
+
+  - id: dbt_batch_run
+    type: io.kestra.plugin.scripts.shell.Commands
+    description: "dbt: run batch-sourced staging + mart models"
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    commands:
+      - |
+        docker run --rm \
+          -v /tmp/benchmark_sa_key.json:/tmp/sa_key.json:ro \
+          -e GCP_PROJECT_ID={{render(vars.bq_project)}} \
+          -e GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa_key.json \
+          benchmark-pipeline:latest \
+          /bin/sh -c "cd /app/dbt/benchmark && dbt deps && dbt run --select stg_trials mart_trial_landscape --profiles-dir . --target prod"
+
+  - id: dbt_test
+    type: io.kestra.plugin.scripts.shell.Commands
+    description: "dbt: run data quality tests"
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    commands:
+      - |
+        docker run --rm \
+          -v /tmp/benchmark_sa_key.json:/tmp/sa_key.json:ro \
+          -e GCP_PROJECT_ID={{render(vars.bq_project)}} \
+          -e GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa_key.json \
+          benchmark-pipeline:latest \
+          /bin/sh -c "cd /app/dbt/benchmark && dbt deps && dbt test --profiles-dir . --target prod"

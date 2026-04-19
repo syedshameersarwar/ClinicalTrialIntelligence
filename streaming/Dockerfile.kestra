@@ -1,0 +1,5 @@
+FROM kestra/kestra:v1.1
+# Add docker CLI so Process-runner tasks can call 'docker exec' via the mounted socket.
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends docker.io \
+    && rm -rf /var/lib/apt/lists/*

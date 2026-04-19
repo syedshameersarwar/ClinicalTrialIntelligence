@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  terraform-validate:
+    name: Terraform Validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.0"
+
+      - name: Terraform Init (no backend)
+        run: terraform -chdir=infra init -backend=false
+
+      - name: Terraform Format Check
+        run: terraform -chdir=infra fmt -check
+
+      - name: Terraform Validate
+        run: terraform -chdir=infra validate
+
+  dbt-compile:
+    name: dbt Compile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dbt
+        run: pip install dbt-bigquery==1.8.0
+
+      - name: Write mock profiles.yml
+        run: |
+          cat > dbt/benchmark/profiles.yml << 'EOF'
+          benchmark:
+            target: ci
+            outputs:
+              ci:
+                type: bigquery
+                method: oauth
+                project: ci-placeholder-project
+                dataset: dbt_marts
+                location: US
+          EOF
+
+      - name: dbt deps
+        run: cd dbt/benchmark && dbt deps
+
+      - name: dbt compile
+        run: cd dbt/benchmark && dbt compile --profiles-dir . --target ci
+        env:
+          GCP_PROJECT_ID: ci-placeholder-project

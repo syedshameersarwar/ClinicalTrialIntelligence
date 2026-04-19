@@ -1,0 +1,46 @@
+version: 2
+
+sources:
+  - name: raw
+    database: "{{ env_var('GCP_PROJECT_ID') }}"
+    schema: raw
+    description: "Raw tables loaded by the Spark batch pipeline (monthly)."
+    tables:
+      - name: trials
+        description: "Enriched clinical trials: one row per trial, with therapeutic area and lead sponsor."
+        columns:
+          - name: nct_id
+            description: "ClinicalTrials.gov unique identifier."
+            tests:
+              - unique
+              - not_null
+          - name: therapeutic_area
+            description: "Keyword-classified therapeutic area from MeSH conditions."
+            tests:
+              - accepted_values:
+                  values:
+                    - Oncology
+                    - Cardiovascular
+                    - Neurology
+                    - Respiratory
+                    - Endocrine/Metabolic
+                    - Infectious Disease
+                    - Immunology/Rheumatology
+                    - Psychiatry
+                    - Gastroenterology
+                    - Other
+
+  - name: streaming
+    database: "{{ env_var('GCP_PROJECT_ID') }}"
+    schema: streaming
+    description: "Tables loaded by the daily streaming pipeline (PyFlink → pg_to_bq)."
+    tables:
+      - name: daily_activity
+        description: "Daily CT.gov update counts per therapeutic area. One row per area per day, appended daily."
+        columns:
+          - name: therapeutic_area
+            tests:
+              - not_null
+          - name: update_count
+            tests:
+              - not_null

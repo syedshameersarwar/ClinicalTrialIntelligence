@@ -1,0 +1,31 @@
+# Data files (too large for git)
+data/aact/
+*.parquet
+*.zip
+*.tar.gz
+
+# GCP credentials
+credentials/
+*.json
+!packages.yml
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+
+# dbt
+dbt/benchmark/target/
+dbt/benchmark/dbt_packages/
+dbt/benchmark/profiles.yml
+
+# Terraform state
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.backup
+infra/terraform.tfvars
+
+# Misc
+.DS_Store
+*.log

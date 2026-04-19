@@ -1,0 +1,33 @@
+FROM python:3.12-slim
+
+# Java is required by PySpark.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        default-jdk-headless wget unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV JAVA_HOME=/usr/lib/jvm/default-java
+
+RUN pip install --no-cache-dir \
+    "pyspark>=3.5,<4" \
+    "dbt-bigquery>=1.7" \
+    "kafka-python>=2.0" \
+    "requests>=2.31" \
+    "pandas>=2.0" \
+    "google-cloud-bigquery>=3.0" \
+    "psycopg2-binary>=2.9" \
+    "pyarrow>=14.0" \
+    "db-dtypes>=1.2"
+
+WORKDIR /app
+
+# Copy project scripts into the image at build time.
+# No volume mounts needed at runtime — avoids Docker bind-mount issues with paths containing spaces.
+COPY data/ data/
+COPY spark/ spark/
+COPY streaming/producers/ streaming/producers/
+COPY streaming/sync/ streaming/sync/
+COPY dbt/benchmark/dbt_project.yml  dbt/benchmark/dbt_project.yml
+COPY dbt/benchmark/profiles.yml     dbt/benchmark/profiles.yml
+COPY dbt/benchmark/packages.yml     dbt/benchmark/packages.yml
+COPY dbt/benchmark/package-lock.yml dbt/benchmark/package-lock.yml
+COPY dbt/benchmark/models/          dbt/benchmark/models/
